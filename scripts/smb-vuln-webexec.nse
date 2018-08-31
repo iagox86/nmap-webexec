@@ -51,6 +51,13 @@ action = function(host, port)
     return nil, stdnse.format_output(false, bind_result)
   end
 
+  local result, username, domain = smb.get_account(host)
+  if(result ~= false) then
+    if domain and domain ~= "" then
+      username = domain .. "\\" .. stdnse.string_or_blank(username, '<blank>')
+    end
+  end
+
   -- Open the service manager
   stdnse.debug2("Opening the remote service manager")
 
@@ -69,13 +76,13 @@ action = function(host, port)
     if string.match(open_service_result, 'NT_STATUS_SERVICE_DOES_NOT_EXIST') then
       return nil, stdnse.format_output(false, "Not vulnerable: WebExService is not installed")
     elseif string.match(open_service_result, 'NT_STATUS_WERR_ACCESS_DENIED') then
-      return nil, stdnse.format_output(false, "Not vulnerable: WebExService could not be accessed by this user")
+      return nil, stdnse.format_output(false, "Not vulnerable: WebExService could not be accessed by " .. username)
     end
     return nil, stdnse.format_output(false, "Not vulnerable: WebExService failed to open with an unknown status: " .. open_service_result)
   end
 
   local output = {}
-  table.insert(output, "Vulnerable: WebExService could be accessed remotely as the given user!")
+  table.insert(output, "Vulnerable: WebExService could be accessed remotely as user " .. username)
 
   local webexec_command = stdnse.get_script_args( "webexec_command" )
   if(webexec_command) then
