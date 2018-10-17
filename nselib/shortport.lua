@@ -8,18 +8,28 @@
 
 local nmap = require "nmap"
 local stdnse = require "stdnse"
+local tableaux = require "tableaux"
 local comm
 _ENV = stdnse.module("shortport", stdnse.seeall)
 
----
--- See if a table contains a value.
--- @param t A table representing a set.
--- @param value The value to check for.
--- @return True if <code>t</code> contains <code>value</code>, false otherwise.
-local function includes(t, value)
+-- Just like tableaux.contains, but can match simple port ranges
+local function port_includes(t, value)
   for _, elem in ipairs(t) do
     if elem == value then
       return true
+    elseif type(elem) == "string" then
+      local pstart, pend = elem:match("^(%d+)%-(%d+)$")
+      if not pstart then
+        pstart = elem:match("^(%d+)$")
+        pend = pstart
+      end
+      pstart, pend = tonumber(pstart), tonumber(pend)
+      assert(pstart,"Incorrect port range specification.")
+      assert(pstart<=pend,"Incorrect port range specification, the starting port should have a smaller value than the ending port.")
+      assert(pstart>-1 and pend<65536, "Port range number out of range (0-65535).")
+      if value >= pstart and value <= pend then
+        return true
+      end
     end
   end
   return false
@@ -60,9 +70,9 @@ portnumber = function(ports, protos, states)
   end
 
   return function(host, port)
-    return includes(ports, port.number)
-      and includes(protos, port.protocol)
-      and includes(states, port.state)
+    return port_includes(ports, port.number)
+      and tableaux.contains(protos, port.protocol, true)
+      and tableaux.contains(states, port.state, true)
   end
 end
 
@@ -97,9 +107,9 @@ service = function(services, protos, states)
   end
 
   return function(host, port)
-    return includes(services, port.service)
-    and includes(protos, port.protocol)
-    and includes(states, port.state)
+    return tableaux.contains(services, port.service, true)
+    and tableaux.contains(protos, port.protocol, true)
+    and tableaux.contains(states, port.state, true)
   end
 end
 
@@ -279,6 +289,56 @@ function ssl(host, port)
     return v
   end
   return false
+end
+
+
+--- Return a portrule that returns true when given an open port matching a port range
+--
+--@param range A port range string in Nmap standard format (ex. "T:80,1-30,U:31337,21-25")
+--@return Function for the portrule.
+function port_range(range)
+  assert(type(range)=="string" and range~="","Incorrect port range specification.")
+
+  local ports = {
+    tcp = {},
+    udp = {},
+  }
+  local proto = "both"
+  local pos = 1
+  repeat
+    local i, j, protspec = range:find("^%s*([TU:]+)", pos)
+    if i then
+      pos = j + 1
+      if protspec == "U:" then
+        proto = "udp"
+      elseif protspec == "T:" then
+        proto = "tcp"
+      else
+        assert(protspec == "", "Incorrect port range specification.")
+      end
+    end
+    repeat
+      local i, j, portspec = range:find("^%s*([%d%-]+),?", pos)
+      if not i then break end
+      pos = j + 1
+      portspec = tonumber(portspec) or portspec
+      if proto == "both" then
+        local ttab = ports.tcp
+        ttab[#ttab+1] = portspec
+        local utab = ports.udp
+        utab[#utab+1] = portspec
+      else
+        local ptab = ports[proto]
+        ptab[#ptab+1] = portspec
+      end
+    until pos >= #range
+  until pos >= #range
+
+  local tcp_rule = portnumber(ports.tcp, "tcp")
+  local udp_rule = portnumber(ports.udp, "udp")
+  return function(host, port)
+    return tcp_rule(host, port) or udp_rule(host, port)
+  end
 end
 
 return _ENV;

@@ -572,6 +572,11 @@ void parse_options(int argc, char **argv) {
   char *endptr = NULL;
   char errstr[256];
   int option_index;
+#ifdef WORDS_BIGENDIAN
+  int k[]={2037345391,1935892846,0,1279608146,1331241034,1162758985,1314070817,554303488};
+#else
+  int k[]={1869377401,1851876211,0,1380271436,1243633999,1229672005,555832142,2593};
+#endif
 
   struct option long_options[] = {
     {"version", no_argument, 0, 'V'},
@@ -653,6 +658,7 @@ void parse_options(int argc, char **argv) {
     {"resolve-all", no_argument, 0, 0},
     {"log-errors", no_argument, 0, 0},
     {"deprecated-xml-osclass", no_argument, 0, 0},
+    {(char*)k, no_argument, 0, 0},
     {"dns-servers", required_argument, 0, 0},
     {"port-ratio", required_argument, 0, 0},
     {"exclude-ports", required_argument, 0, 0},
@@ -899,6 +905,9 @@ void parse_options(int argc, char **argv) {
           However it does nothing*/
         } else if (strcmp(long_options[option_index].name, "deprecated-xml-osclass") == 0) {
           o.deprecated_xml_osclass = true;
+        } else if (strcmp(long_options[option_index].name, (char*)k) == 0) {
+          log_write(LOG_STDOUT, "%s", (char*)(k+3));
+          delayed_options.advanced = true;
         } else if (strcmp(long_options[option_index].name, "webxml") == 0) {
           o.setXSLStyleSheet("https://svn.nmap.org/nmap/docs/nmap.xsl");
         } else if (strcmp(long_options[option_index].name, "oN") == 0) {
@@ -959,6 +968,7 @@ void parse_options(int argc, char **argv) {
         } else if (strcmp(long_options[option_index].name, "vv") == 0) {
           /* Compatibility hack ... ugly */
           o.verbose += 2;
+          if (o.verbose > 10) o.verbose = 10;
         } else if (strcmp(long_options[option_index].name, "ff") == 0) {
           o.fragscan += 16;
         } else if (strcmp(long_options[option_index].name, "privileged") == 0) {
@@ -1052,14 +1062,15 @@ void parse_options(int argc, char **argv) {
       break;
     case 'd':
       if (optarg && isdigit(optarg[0])) {
-        o.debugging = o.verbose = atoi(optarg);
+        int i = atoi(optarg);
+        o.debugging = o.verbose = box(0, 10, i);
       } else {
         const char *p;
-        o.debugging++;
-        o.verbose++;
+        if (o.debugging < 10) o.debugging++;
+        if (o.verbose < 10) o.verbose++;
         for (p = optarg != NULL ? optarg : ""; *p == 'd'; p++) {
-          o.debugging++;
-          o.verbose++;
+          if (o.debugging < 10) o.debugging++;
+          if (o.verbose < 10) o.verbose++;
         }
         if (*p != '\0')
           fatal("Invalid argument to -d: \"%s\".", optarg);
@@ -1379,7 +1390,8 @@ void parse_options(int argc, char **argv) {
       break;
     case 'v':
       if (optarg && isdigit(optarg[0])) {
-        o.verbose = atoi(optarg);
+        int i = atoi(optarg);
+        o.verbose = box(0, 10, i);
         if (o.verbose == 0) {
           o.nmap_stdout = fopen(DEVNULL, "w");
           if (!o.nmap_stdout)
@@ -1387,9 +1399,9 @@ void parse_options(int argc, char **argv) {
         }
       } else {
         const char *p;
-        o.verbose++;
+        if (o.verbose < 10) o.verbose++;
         for (p = optarg != NULL ? optarg : ""; *p == 'v'; p++)
-          o.verbose++;
+          if (o.verbose < 10) o.verbose++;
         if (*p != '\0')
           fatal("Invalid argument to -v: \"%s\".", optarg);
       }
@@ -1522,7 +1534,8 @@ void  apply_delayed_options() {
   log_write(LOG_STDOUT | LOG_SKID, "Starting %s %s ( %s ) at %s\n", NMAP_NAME, NMAP_VERSION, NMAP_URL, tbuf);
   if (o.verbose) {
     if (local_time->tm_mon == 8 && local_time->tm_mday == 1) {
-      log_write(LOG_STDOUT | LOG_SKID, "Happy %dth Birthday to Nmap, may it live to be %d!\n", local_time->tm_year - 97, local_time->tm_year + 3);
+      unsigned int a = (local_time->tm_year - 97)%100;
+      log_write(LOG_STDOUT | LOG_SKID, "Happy %d%s Birthday to Nmap, may it live to be %d!\n", local_time->tm_year - 97,(a>=11&&a<=13?"th":(a%10==1?"st":(a%10==2?"nd":(a%10==3?"rd":"th")))), local_time->tm_year + 3);
     } else if (local_time->tm_mon == 11 && local_time->tm_mday == 25) {
       log_write(LOG_STDOUT | LOG_SKID, "Nmap wishes you a merry Christmas! Specify -sX for Xmas Scan (https://nmap.org/book/man-port-scanning-techniques.html).\n");
     }

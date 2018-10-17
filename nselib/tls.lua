@@ -14,6 +14,8 @@ local string = require "string"
 local math = require "math"
 local os = require "os"
 local table = require "table"
+local tableaux = require "tableaux"
+local rand = require "rand"
 _ENV = stdnse.module("tls", stdnse.seeall)
 
 local pack = string.pack
@@ -675,15 +677,8 @@ DEFAULT_CIPHERS = {
 }
 
 local function find_key(t, value)
-  local k, v
-
-  for k, v in pairs(t) do
-    if v == value then
-      return k
-    end
-  end
-
-  return nil
+  local found, v = tableaux.contains(t, value)
+  return v
 end
 
 -- Keep this local to enforce use of the cipher_info function
@@ -1459,7 +1454,7 @@ function client_hello(t)
   ))
 
   -- Set the random data.
-  table.insert(b, stdnse.generate_random_string(28))
+  table.insert(b, rand.random_string(28))
 
   -- Set the session ID.
   local sid = t["session_id"] or ""
@@ -1538,7 +1533,15 @@ function client_hello(t)
   table.insert(h, pack(">s3", b))
 
   -- Record layer version should be SSLv3 (lowest compatible record version)
-  return record_write("handshake", t.record_protocol or "SSLv3", table.concat(h))
+  -- But some implementations (OpenSSL) will not finish a handshake that could
+  -- be downgraded by a MITM to SSLv3. So we use TLSv1.0 unless the caller
+  -- explicitly tries to set SSLv3.0 somewhere (t.record_protocol or
+  -- t.protocol)
+  local record_proto = t.record_protocol
+  if not record_proto then
+    record_proto = (t.protocol == "SSLv3") and "SSLv3" or "TLSv1.0"
+  end
+  return record_write("handshake", record_proto, table.concat(h))
 end
 
 local function read_atleast(s, n)

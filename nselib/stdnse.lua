@@ -30,7 +30,6 @@ local pcall = pcall
 
 local ceil = math.ceil
 local max = math.max
-local random = math.random
 
 local format = string.format;
 local rep = string.rep
@@ -225,38 +224,6 @@ function strsplit(pattern, text)
     end
   end
   return list;
-end
-
---- Generate a random string.
---
--- You can either provide your own charset or the function will use
--- a default one which is [A-Z].
--- @param len Length of the string we want to generate.
--- @param charset Charset that will be used to generate the string. String or table
--- @return A random string of length <code>len</code> consisting of
--- characters from <code>charset</code> if one was provided, otherwise
--- <code>charset</code> defaults to [A-Z] letters.
-function generate_random_string(len, charset)
-  local t = {}
-  local ascii_A = 65
-  local ascii_Z = 90
-  if charset then
-    if type(charset) == "string" then
-      for i=1,len do
-        local r = random(#charset)
-        t[i] = sub(charset, r, r)
-      end
-    else
-      for i=1,len do
-        t[i]=charset[random(#charset)]
-      end
-    end
-  else
-    for i=1,len do
-      t[i]=char(random(ascii_A,ascii_Z))
-    end
-  end
-  return concat(t)
 end
 
 --- Return a wrapper closure around a socket that buffers socket reads into
@@ -977,77 +944,6 @@ do end -- no function here, see nse_main.lua
 do end -- no function here, see nse_main.lua
 
 
-
----Checks if the port is in the port range
---
--- For example, calling:
--- <code>in_port_range({number=31337,protocol="udp"},"T:15,50-75,U:31334-31339")</code>
--- would result in a true value
---@param port a port structure containing keys port number(number) and protocol(string)
---@param port_range a port range string in Nmap standard format (ex. "T:80,1-30,U:31337,21-25")
---@returns boolean indicating whether the port is in the port range
-function in_port_range(port,port_range)
-  assert(port and type(port.number)=="number" and type(port.protocol)=="string" and
-    (port.protocol=="udp" or port.protocol=="tcp"),"Port structure missing or invalid: port={ number=<port_number>, protocol=<port_protocol> }")
-  assert((type(port_range)=="string" or type(port_range)=="number") and port_range~="","Incorrect port range specification.")
-
-  -- Proto - true for TCP, false for UDP
-  local proto
-  if(port.protocol=="tcp") then proto = true else proto = false end
-
-  --TCP flag for iteration - true for TCP, false for UDP, if not specified we presume TCP
-  local tcp_flag = true
-
-  -- in case the port_range is a single number
-  if type(port_range)=="number" then
-    if proto and port_range==port.number then return true
-    else return false
-    end
-  end
-
-  --clean the string a bit
-  port_range=port_range:gsub("%s+","")
-
-  -- single_pr - single port range
-  for i, single_pr in ipairs(strsplit(",",port_range)) do
-    if single_pr:match("T:") then
-      tcp_flag = true
-      single_pr = single_pr:gsub("T:","")
-    else
-      if single_pr:match("U:") then
-        tcp_flag = false
-        single_pr = single_pr:gsub("U:","")
-      end
-    end
-
-    -- compare ports only when the port's protocol is the same as
-    -- the current single port range
-    if tcp_flag == proto then
-      local pone = single_pr:match("^(%d+)$")
-      if pone then
-        pone = tonumber(pone)
-        assert(pone>-1 and pone<65536, "Port range number out of range (0-65535).")
-
-        if pone == port.number then
-          return true
-        end
-      else
-        local pstart, pend = single_pr:match("^(%d+)%-(%d+)$")
-        pstart, pend = tonumber(pstart), tonumber(pend)
-        assert(pstart,"Incorrect port range specification.")
-        assert(pstart<=pend,"Incorrect port range specification, the starting port should have a smaller value than the ending port.")
-        assert(pstart>-1 and pstart<65536 and pend>-1 and pend<65536, "Port range number out of range (0-65535).")
-
-        if port.number >=pstart and port.number <= pend then
-          return true
-        end
-      end
-    end
-  end
-  -- if no match is found then the port doesn't belong to the port_range
-  return false
-end
-
 --- Module function that mimics some behavior of Lua 5.1 module function.
 --
 -- This convenience function returns a module environment to set the _ENV
@@ -1210,20 +1106,6 @@ function filename_escape(s)
   end
 end
 
---- Check for the presence of a value in a table
---@param tab the table to search into
---@param item the searched value
---@return Boolean true if the item was found, false if not
---@return The index or key where the value was found, or nil
-function contains(tab, item)
-  for k, val in pairs(tab) do
-    if val == item then
-      return true, k
-    end
-  end
-  return false, nil
-end
-
 --- Returns a conservative timeout for a host
 --
 -- If the host parameter is a NSE host table with a <code>times.timeout</code>
@@ -1258,19 +1140,6 @@ function get_timeout(host, max_timeout, min_timeout)
     return max_timeout
   end
   return t
-end
-
---- Returns the keys of a table as an array
--- @param t The table
--- @return A table of keys
-function keys(t)
-  local ret = {}
-  local k, v = next(t)
-  while k do
-    ret[#ret+1] = k
-    k, v = next(t, k)
-  end
-  return ret
 end
 
 -- Returns the case insensitive pattern of given parameter

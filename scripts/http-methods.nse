@@ -4,6 +4,8 @@ local shortport = require "shortport"
 local stdnse = require "stdnse"
 local string = require "string"
 local table = require "table"
+local tableaux = require "table"
+local rand = require "rand"
 
 description = [[
 Finds out what options are supported by an HTTP server by sending an
@@ -79,7 +81,7 @@ local function filter_out(t, filter)
   local result = {}
   local _, e, f
   for _, e in ipairs(t) do
-    if not stdnse.contains(filter, e) then
+    if not tableaux.contains(filter, e) then
       result[#result + 1] = e
     end
   end
@@ -158,20 +160,20 @@ action = function(host, port)
   local status_lines = {}
 
   for _, method in pairs(SAFE_METHODS) do
-    if not stdnse.contains(methods, method) then
+    if not tableaux.contains(methods, method) then
       table.insert(to_test, method)
     end
   end
 
   if test_all_unsafe then
     for _, method in pairs(UNSAFE_METHODS) do
-      if not stdnse.contains(methods, method) then
+      if not tableaux.contains(methods, method) then
         table.insert(to_test, method)
       end
     end
   end
 
-  local random_resp = http.generic_request(host, port, stdnse.generate_random_string(4), path)
+  local random_resp = http.generic_request(host, port, rand.random_alpha(4):upper(), path)
 
   if random_resp.status then
     stdnse.debug1("Response Code to Random Method is %d", random_resp.status)
@@ -211,7 +213,7 @@ action = function(host, port)
       if method == "OPTIONS" then
         -- Use the saved value.
         str = options_status_line
-      elseif stdnse.contains(to_test, method) then
+      elseif tableaux.contains(to_test, method) then
         -- use the value saved earlier.
         str = status_lines[method]
       -- this case arises when methods in the Public or Allow headers are retested.

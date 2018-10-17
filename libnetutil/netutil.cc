@@ -4094,8 +4094,6 @@ pcap_t *my_pcap_open_live(const char *device, int snaplen, int promisc, int to_m
        with what we have then ... */
     Strncpy(pcapdev, device, sizeof(pcapdev));
   }
-  HANDLE pcapMutex = CreateMutex(NULL, 0, TEXT("Global\\DnetPcapHangAvoidanceMutex"));
-  DWORD wait = WaitForSingleObject(pcapMutex, INFINITE);
 #else
   Strncpy(pcapdev, device, sizeof(pcapdev));
 #endif
@@ -4145,15 +4143,15 @@ pcap_t *my_pcap_open_live(const char *device, int snaplen, int promisc, int to_m
 #endif /* not __amigaos__ */
 
 #ifdef WIN32
-  if (wait == WAIT_ABANDONED || wait == WAIT_OBJECT_0) {
-    ReleaseMutex(pcapMutex);
-  }
-  CloseHandle(pcapMutex);
   /* We want any responses back ASAP */
   /* This is unnecessary with Npcap since libpcap calls PacketSetMinToCopy(0)
    * based on immediate mode. Have not determined if it is needed for WinPcap
    * or not, but it's not hurting anything. */
-  pcap_setmintocopy(pt, 1);
+  pcap_setmintocopy(pt, 0);
+  /* Npcap sets kernel buffer size to 1MB, but user buffer size to 256KB.
+   * Memory is pretty cheap these days, so lets match the kernel buffer size
+   * for better performance. */
+  pcap_setuserbuffer(pt, 1000000);
 #endif
 
   return pt;
