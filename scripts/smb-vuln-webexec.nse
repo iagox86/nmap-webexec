@@ -25,12 +25,17 @@ References:
 -- PORT    STATE SERVICE      REASON
 -- 445/tcp open  microsoft-ds syn-ack
 -- | smb-vuln-webexec:
--- |_  Vulnerable
---
--- PORT    STATE SERVICE      REASON
--- 445/tcp open  microsoft-ds syn-ack
--- | smb-vuln-webexec:
--- |_  ERROR: Not vulnerable: Could open WebExService, but could not execute code
+-- |   VULNERABLE:
+-- |   Remote Code Execution vulnerability in WebExService
+-- |     State: VULNERABLE
+-- |     IDs:  CVE:CVE-2018-15442
+-- |     Risk factor: HIGH
+-- |       A critical remote code execution vulnerability exists in WebExService (WebExec).
+-- |     Disclosure date: 2018-10-24
+-- |     References:
+-- |       https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-15442
+-- |       https://blog.skullsecurity.org/?p=2340
+-- |_      https://webexec.org
 
 author = "Ron Bowes"
 license = "Same as Nmap--See https://nmap.org/book/man-legal.html"
