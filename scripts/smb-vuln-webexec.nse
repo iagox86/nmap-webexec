@@ -13,7 +13,7 @@ Note: Requires a user account (local or domain).
 
 References:
 * https://www.webexec.org
-* https://blog.skullsecurity.org/?p=2340
+* https://blog.skullsecurity.org/2018/technical-rundown-of-webexec
 * https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-15442
 ]]
 
@@ -34,7 +34,7 @@ References:
 -- |     Disclosure date: 2018-10-24
 -- |     References:
 -- |       https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-15442
--- |       https://blog.skullsecurity.org/?p=2340
+-- |       https://blog.skullsecurity.org/2018/technical-rundown-of-webexec
 -- |_      https://webexec.org
 
 author = "Ron Bowes"
@@ -57,7 +57,7 @@ action = function(host, port)
     description = "A critical remote code execution vulnerability exists in WebExService (WebExec).",
     references = {
       'https://webexec.org', -- TODO: We can add Cisco's advisory here
-      'https://blog.skullsecurity.org/?p=2340'
+      'https://blog.skullsecurity.org/2018/technical-rundown-of-webexec'
     },
     dates = {
       disclosure = {year = '2018', month = '10', day = '24'}, -- TODO: Update with the actual date
